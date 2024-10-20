@@ -1,5 +1,4 @@
 import 'dart:developer';
-// !لم يتم نقلها
 import 'package:flutter/material.dart';
 import 'package:flutter_iconly/flutter_iconly.dart';
 import 'package:news_app/widgets/vertical_spacing.dart';
@@ -11,7 +10,7 @@ import '../services/global_methods.dart';
 import '../services/utils.dart';
 
 class NewsDetailsWebView extends StatefulWidget {
-  const NewsDetailsWebView({super.key, required this.url});
+  const NewsDetailsWebView({Key? key, required this.url}) : super(key: key);
   final String url;
 
   @override
@@ -19,31 +18,14 @@ class NewsDetailsWebView extends StatefulWidget {
 }
 
 class _NewsDetailsWebViewState extends State<NewsDetailsWebView> {
-  late final WebViewController _webViewController;
+  late WebViewController _webViewController;
   double _progress = 0.0;
 
   @override
   void initState() {
     super.initState();
-    _webViewController = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0x00000000))
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onProgress: (int progress) {
-            setState(() {
-              _progress = progress / 100;
-            });
-          },
-          onPageStarted: (String url) {
-            // Optional: Handle page started loading
-          },
-          onPageFinished: (String url) {
-            // Optional: Handle page finished loading
-          },
-        ),
-      )
-      ..loadRequest(Uri.parse(widget.url));
+    // Enable Hybrid Composition for better performance on Android
+    // WebView.platform = SurfaceAndroidWebView();
   }
 
   @override
@@ -61,30 +43,31 @@ class _NewsDetailsWebViewState extends State<NewsDetailsWebView> {
       },
       child: Scaffold(
         appBar: AppBar(
-            leading: IconButton(
-              icon: const Icon(IconlyLight.arrowLeft2),
-              onPressed: () {
-                Navigator.pop(context);
+          leading: IconButton(
+            icon: const Icon(IconlyLight.arrowLeft2),
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+          iconTheme: IconThemeData(color: color),
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          elevation: 0,
+          centerTitle: true,
+          title: Text(
+            widget.url,
+            style: TextStyle(color: color),
+          ),
+          actions: [
+            IconButton(
+              onPressed: () async {
+                await _showModalSheetFct();
               },
-            ),
-            iconTheme: IconThemeData(color: color),
-            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-            elevation: 0,
-            centerTitle: true,
-            title: Text(
-              widget.url,
-              style: TextStyle(color: color),
-            ),
-            actions: [
-              IconButton(
-                onPressed: () async {
-                  await _showModalSheetFct();
-                },
-                icon: const Icon(
-                  Icons.more_horiz,
-                ),
+              icon: const Icon(
+                Icons.more_horiz,
               ),
-            ]),
+            ),
+          ],
+        ),
         body: Column(
           children: [
             LinearProgressIndicator(
@@ -94,7 +77,10 @@ class _NewsDetailsWebViewState extends State<NewsDetailsWebView> {
             ),
             Expanded(
               child: WebViewWidget(
-                controller: _webViewController,
+                controller: WebViewController()
+                  ..setJavaScriptMode(JavaScriptMode.unrestricted)
+                  ..loadRequest(Uri.parse(
+                      widget.url)), // Use loadRequest instead of loadUrl
               ),
             ),
           ],
@@ -105,82 +91,84 @@ class _NewsDetailsWebViewState extends State<NewsDetailsWebView> {
 
   Future<void> _showModalSheetFct() async {
     await showModalBottomSheet(
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(
-            top: Radius.circular(20),
-          ),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(20),
         ),
-        context: context,
-        builder: (context) {
-          return Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(20),
-              ),
+      ),
+      context: context,
+      builder: (context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(20),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const VerticalSpacing(20),
-                Center(
-                  child: Container(
-                    height: 5,
-                    width: 35,
-                    decoration: BoxDecoration(
-                      color: Colors.grey,
-                      borderRadius: BorderRadius.circular(30),
-                    ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const VerticalSpacing(20),
+              Center(
+                child: Container(
+                  height: 5,
+                  width: 35,
+                  decoration: BoxDecoration(
+                    color: Colors.grey,
+                    borderRadius: BorderRadius.circular(30),
                   ),
                 ),
-                const VerticalSpacing(20),
-                const Text(
-                  'More option',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20),
-                ),
-                const VerticalSpacing(20),
-                const Divider(
-                  thickness: 2,
-                ),
-                const VerticalSpacing(20),
-                ListTile(
-                  leading: const Icon(Icons.share),
-                  title: const Text('Share'),
-                  onTap: () async {
-                    try {
-                      await Share.share(widget.url,
-                          subject: 'Look what I made!');
-                    } catch (err) {
-                      GlobalMethods.errorDialog(
-                          errorMessage: err.toString(), context: context);
-                    }
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.open_in_browser),
-                  title: const Text('Open in browser'),
-                  onTap: () async {
-                    if (!await launchUrl(Uri.parse(widget.url))) {
-                      throw 'Could not launch ${widget.url}';
-                    }
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.refresh),
-                  title: const Text('Refresh'),
-                  onTap: () async {
-                    try {
-                      await _webViewController.reload();
-                    } catch (err) {
-                      log("error occurred $err");
-                    } finally {
-                      Navigator.pop(context);
-                    }
-                  },
-                ),
-              ],
-            ),
-          );
-        });
+              ),
+              const VerticalSpacing(20),
+              const Text(
+                'More options',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 20),
+              ),
+              const VerticalSpacing(20),
+              const Divider(
+                thickness: 2,
+              ),
+              const VerticalSpacing(20),
+              ListTile(
+                leading: const Icon(Icons.share),
+                title: const Text('Share'),
+                onTap: () async {
+                  try {
+                    await Share.share(widget.url, subject: 'Look what I made!');
+                  } catch (err) {
+                    GlobalMethods.errorDialog(
+                      errorMessage: err.toString(),
+                      context: context,
+                    );
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.open_in_browser),
+                title: const Text('Open in browser'),
+                onTap: () async {
+                  if (!await launchUrl(Uri.parse(widget.url))) {
+                    throw 'Could not launch ${widget.url}';
+                  }
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.refresh),
+                title: const Text('Refresh'),
+                onTap: () async {
+                  try {
+                    await _webViewController.reload();
+                  } catch (err) {
+                    log("Error occurred: $err");
+                  } finally {
+                    Navigator.pop(context);
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
